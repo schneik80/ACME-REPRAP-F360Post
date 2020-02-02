@@ -10,14 +10,14 @@
   FORKID {A316FBC4-FA6E-41C5-A347-3D94F72F5D06}
 */
 
-description = "Generic FFF Machine";
-vendor = "Autodesk";
-vendorUrl = "http://www.autodesk.com";
-legal = "Copyright (C) 2012-2019 by Autodesk, Inc.";
+description = "Reprap and Duet3d Firmware";
+vendor = "ACME CAD CAM";
+vendorUrl = "http://acmecadcam.com";
+legal = "Attribution-NonCommercial-ShareAlike 4.0 International";
 certificationLevel = 2;
 minimumRevision = 45266;
 
-longDescription = "Simple post to export toolpath for generic FFF Machine in gcode format";
+longDescription = " Fusion 360 Post for Duet FFF cartesian printers.";
 
 extension = "gcode";
 setCodePage("ascii");
@@ -48,6 +48,7 @@ var zFormat = createFormat({decimals: (unit == MM ? 3 : 4)});
 var gFormat = createFormat({prefix: "G", width: 1, zeropad: false, decimals: 0});
 var mFormat = createFormat({prefix: "M", width: 2, zeropad: true, decimals: 0});
 var tFormat = createFormat({prefix: "T", width: 1, zeropad: false, decimals: 0});
+var pFormat = createFormat({ prefix: "P", zeropad: false, decimals: 0 });
 var feedFormat = createFormat({decimals: (unit == MM ? 0 : 1)});
 
 var gMotionModal = createModal({force: true}, gFormat); // modal group 1 // G0-G3, ...
@@ -60,6 +61,7 @@ var zOutput = createVariable({prefix: "Z"}, zFormat);
 var feedOutput = createVariable({prefix: "F"}, feedFormat);
 var eOutput = createVariable({prefix: "E"}, xyzFormat);
 var sOutput = createVariable({prefix: "S", force: true}, xyzFormat);
+var rOutput = createVariable({prefix: "R", force: true }, xyzFormat);
 
 var activeExtruder = 0;
 var extrusionLength = 0;
