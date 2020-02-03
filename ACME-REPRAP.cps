@@ -15,9 +15,9 @@ vendor = "ACME CAD CAM";
 vendorUrl = "http://acmecadcam.com";
 legal = "Attribution-NonCommercial-ShareAlike 4.0 International";
 certificationLevel = 2;
-minimumRevision = 45266;
+minimumRevision = 45621;
 
-longDescription = " Fusion 360 Post for Duet FFF cartesian printers.";
+longDescription = "Simple post to export toolpath for generic FFF Machine in gcode format";
 
 extension = "gcode";
 setCodePage("ascii");
@@ -26,20 +26,22 @@ capabilities = CAPABILITY_ADDITIVE;
 tolerance = spatial(0.002, MM);
 highFeedRate = toPreciseUnit(6000, MM);
 
-var bedCenter = {
-  x: 502.5,
-  y: 502.5,
-  z: 0.0
-};
-
-//Printer limits as variable as they will be overriden by properties in onOpen
+// needed for range checking
 var printerLimits = {
   x: {min: 0, max: 300.0}, //Defines the x bed size
   y: {min: 0, max: 300.0}, //Defines the y bed size
   z: {min: 0, max: 300.0} //Defines the z bed size
 };
 
+// For information only
+var bedCenter = {
+  x: 150.0,
+  y: 150.0,
+  z: 0.0
+};
+
 var extruderOffsets = [[0, 0, 0], [0, 0, 0]];
+var activeExtruder = 0;  //Track the active extruder.
 
 var xyzFormat = createFormat({decimals: (unit == MM ? 3 : 4)});
 var xFormat = createFormat({decimals: (unit == MM ? 3 : 4)});
@@ -50,30 +52,28 @@ var mFormat = createFormat({prefix: "M", width: 2, zeropad: true, decimals: 0});
 var tFormat = createFormat({prefix: "T", width: 1, zeropad: false, decimals: 0});
 var pFormat = createFormat({ prefix: "P", zeropad: false, decimals: 0 });
 var feedFormat = createFormat({decimals: (unit == MM ? 0 : 1)});
+var integerFormat = createFormat({decimals:0});
+var dimensionFormatSuffixed = createFormat({decimals: (unit == MM ? 3 : 4), zeropad: false, suffix: (unit == MM ? "mm" : "in")});
 
 var gMotionModal = createModal({force: true}, gFormat); // modal group 1 // G0-G3, ...
-var gPlaneModal = createModal({onchange: function () {gMotionModal.reset();}}, gFormat); // modal group 2 // G17-19
+var gPlaneModal = createModal({onchange: function () {gMotionModal.reset();}}, gFormat); // modal group 2 // G17-19 //Actually unused
 var gAbsIncModal = createModal({}, gFormat); // modal group 3 // G90-91
 
 var xOutput = createVariable({prefix: "X"}, xFormat);
 var yOutput = createVariable({prefix: "Y"}, yFormat);
 var zOutput = createVariable({prefix: "Z"}, zFormat);
 var feedOutput = createVariable({prefix: "F"}, feedFormat);
-var eOutput = createVariable({prefix: "E"}, xyzFormat);
-var sOutput = createVariable({prefix: "S", force: true}, xyzFormat);
+var eOutput = createVariable({prefix: "E"}, xyzFormat);  // Extrusion length
+var sOutput = createVariable({prefix: "S", force: true}, xyzFormat);  // Parameter temperature or speed
 var rOutput = createVariable({prefix: "R", force: true }, xyzFormat);
 
-var activeExtruder = 0;
-var extrusionLength = 0;
-
-/**
-  Writes the specified block.
-*/
+// Writes the specified block.
 function writeBlock() {
   writeWords(arguments);
 }
 
 function onOpen() {
+  getPrinterGeometry();
 
   if (programName) {
     writeComment(programName);
@@ -82,58 +82,86 @@ function onOpen() {
     writeComment(programComment);
   }
 
-  printerLimits.x.max = parseFloat(getGlobalParameterSafe("machine-width", "0"));
-  printerLimits.y.max = parseFloat(getGlobalParameterSafe("machine-depth", "0"));
-  printerLimits.z.max = parseFloat(getGlobalParameterSafe("machine-height", "0"));
-
-  bedCenter.x = parseFloat(getGlobalParameterSafe("bed-center-x", "0"));
-  bedCenter.y = parseFloat(getGlobalParameterSafe("bed-center-y", "0"));
-  bedCenter.z = parseFloat(getGlobalParameterSafe("bed-center-z", "0"));
-
-  extruderOffsets[0][0] = parseFloat(getGlobalParameterSafe("ext1-offset-x", 0));
-  extruderOffsets[0][1] = parseFloat(getGlobalParameterSafe("ext1-offset-y", 0));
-  extruderOffsets[0][2] = parseFloat(getGlobalParameterSafe("ext1-offset-z", 0));
-
-  writeComment("Printer Name: " + getGlobalParameterSafe("printer-name", "Generic"));
-  writeComment("Print time: " + getGlobalParameterSafe("print-time", "0") + "s");
-  writeComment("Extruder 1 Material used: " + getGlobalParameterSafe("ext1-extrusion-len", "0"));
-  writeComment("Extruder 1 Material name: " + getGlobalParameterSafe("ext1-material-name", "PLA"));
-  writeComment("Extruder 1 Filament diameter: " + getGlobalParameterSafe("ext1-filament-dia", "1.75") + "mm");
-  writeComment("Extruder 1 Nozzle diameter: " + getGlobalParameterSafe("ext1-nozzle-dia", "0.4"));
-  writeComment("Extruder 1 offset x: " + getGlobalParameterSafe("ext1-offset-x", "0"));
-  writeComment("Extruder 1 offset y: " + getGlobalParameterSafe("ext1-offset-y", "0"));
-  writeComment("Extruder 1 offset z: " + getGlobalParameterSafe("ext1-offset-z", "0"));
-  writeComment("Max temp: " + getGlobalParameterSafe("ext1-temp", "0"));
-  writeComment("Bed temp: " + getGlobalParameterSafe("bed-temp", "0"));
-  writeComment("Layer Count: " + getGlobalParameterSafe("layer-cnt", "0"));
+  writeComment("Printer Name: " + getGlobalParameter("printer-name", "Generic"));
+  writeComment("Print time: " + xyzFormat.format(printTime) + "s");
+  writeComment("Extruder 1 Material used: " + dimensionFormatSuffixed.format(getExtruder(1).extrusionLength));
+  writeComment("Extruder 1 Material name: " + getExtruder(1).materialName);
+  writeComment("Extruder 1 Filament diameter: " + dimensionFormatSuffixed.format(getExtruder(1).filamentDiameter));
+  writeComment("Extruder 1 Nozzle diameter: " + dimensionFormatSuffixed.format(getExtruder(1).nozzleDiameter));
+  writeComment("Extruder 1 offset x: " + dimensionFormatSuffixed.format(extruderOffsets[0][0]));
+  writeComment("Extruder 1 offset y: " + dimensionFormatSuffixed.format(extruderOffsets[0][1]));
+  writeComment("Extruder 1 offset z: " + dimensionFormatSuffixed.format(extruderOffsets[0][2]));
+  writeComment("Max temp: " + integerFormat.format(getExtruder(1).temperature));
+  writeComment("Bed temp: " + integerFormat.format(bedTemp));
+  writeComment("Layer Count: " + integerFormat.format(layerCount));
 
   if (hasGlobalParameter("ext2-extrusion-len") &&
-    hasGlobalParameter("ext2-nozzle-dia") &&
-    hasGlobalParameter("ext2-temp") && hasGlobalParameter("ext2-filament-dia") &&
-    hasGlobalParameter("ext2-material-name") &&
-    hasGlobalParameter("ext2-extrusion-len")
-  ) {
-    writeComment("Extruder 2 material used: " + getGlobalParameterSafe("ext2-extrusion-len", "0"));
-    writeComment("Extruder 2 material name: " + getGlobalParameterSafe("ext2-material-name", ""));
-    writeComment("Extruder 2 filament diameter: " + getGlobalParameterSafe("ext2-filament-dia", "0"));
-    writeComment("Extruder 2 nozzle diameter: " + getGlobalParameterSafe("ext2-nozzle-dia", "0.4"));
-    writeComment("Extruder 2 max temp: " + getGlobalParameterSafe("ext2-temp", "0"));
-    writeComment("Extruder 2 offset x: " + getGlobalParameterSafe("ext2-offset-x", "0"));
-    writeComment("Extruder 2 offset y: " + getGlobalParameterSafe("ext2-offset-y", "0"));
-    writeComment("Extruder 2 offset z: " + getGlobalParameterSafe("ext2-offset-z", "0"));
-    extruderOffsets[1] = [];
-    extruderOffsets[1][0] = parseFloat(getGlobalParameterSafe("ext2-offset-x", 0));
-    extruderOffsets[1][1] = parseFloat(getGlobalParameterSafe("ext2-offset-y", 0));
-    extruderOffsets[1][2] = parseFloat(getGlobalParameterSafe("ext2-offset-z", 0));
-  }
-  writeComment("width: " + getGlobalParameterSafe("machine-width", "0"));
-  writeComment("depth: " + getGlobalParameterSafe("machine-depth", "0"));
-  writeComment("height: " + getGlobalParameterSafe("machine-height", "0"));
-  writeComment("center x: " + getGlobalParameterSafe("bed-center-x", "0"));
-  writeComment("center y: " + getGlobalParameterSafe("bed-center-y", "0"));
-  writeComment("center z: " + getGlobalParameterSafe("bed-center-z", "0"));
-  writeComment("Count of bodies: " + getGlobalParameterSafe("cnt-parts", "0"));
-  writeComment("Version of Fusion: " + getGlobalParameterSafe("version", "0"));
+  hasGlobalParameter("ext2-nozzle-dia") &&
+  hasGlobalParameter("ext2-temp") && hasGlobalParameter("ext2-filament-dia") &&
+  hasGlobalParameter("ext2-material-name")
+) {
+  writeComment("Extruder 2 material used: " + dimensionFormatSuffixed.format(getExtruder(2).extrusionLength));
+  writeComment("Extruder 2 material name: " + getExtruder(2).materialName);
+  writeComment("Extruder 2 filament diameter: " + dimensionFormatSuffixed.format(getExtruder(2).filamentDiameter));
+  writeComment("Extruder 2 nozzle diameter: " + dimensionFormatSuffixed.format(getExtruder(2).nozzleDiameter));
+  writeComment("Extruder 2 max temp: " + integerFormat.format(getExtruder(2).temperature));
+  writeComment("Extruder 2 offset x: " + dimensionFormatSuffixed.format(extruderOffsets[1][0]));
+  writeComment("Extruder 2 offset y: " + dimensionFormatSuffixed.format(extruderOffsets[1][1]));
+  writeComment("Extruder 2 offset z: " + dimensionFormatSuffixed.format(extruderOffsets[1][2]));
+}
+
+writeComment("width: " + dimensionFormatSuffixed.format(printerLimits.x.max));
+writeComment("depth: " + dimensionFormatSuffixed.format(printerLimits.y.max));
+writeComment("height: " + dimensionFormatSuffixed.format(printerLimits.z.max));
+writeComment("center x: " + dimensionFormatSuffixed.format(bedCenter.x));
+writeComment("center y: " + dimensionFormatSuffixed.format(bedCenter.y));
+writeComment("center z: " + dimensionFormatSuffixed.format(bedCenter.z));
+writeComment("Count of bodies: " + integerFormat.format(partCount));
+writeComment("Version of Fusion: " + getGlobalParameter("version"));
+}
+
+function getPrinterGeometry() {
+machineConfiguration = getMachineConfiguration();
+
+// Get the printer geometry from the machine configuration
+printerLimits.x.min = 0;
+printerLimits.y.min = 0;
+printerLimits.z.min = 0;
+printerLimits.x.max = machineConfiguration.getWidth();
+printerLimits.y.max = machineConfiguration.getDepth();
+printerLimits.z.max = machineConfiguration.getHeight();
+
+if (machineConfiguration.hasCenterPosition()) {
+  bedCenter.x = machineConfiguration.getCenterPositionX();
+  bedCenter.y = machineConfiguration.getCenterPositionY();
+  bedCenter.z = machineConfiguration.getCenterPositionZ();
+} else {
+  bedCenter.x = printerLimits.x.max / 2;
+  bedCenter.y = printerLimits.y.max / 2;
+  bedCenter.z = printerLimits.x.max / 2;
+}
+
+extruderOffsets[0][0] = machineConfiguration.getExtruderOffsetX(1);
+extruderOffsets[0][1] = machineConfiguration.getExtruderOffsetY(1);
+extruderOffsets[0][2] = machineConfiguration.getExtruderOffsetZ(1);
+if (numberOfExtruders > 1) {
+  extruderOffsets[1] = [];
+  extruderOffsets[1][0] = machineConfiguration.getExtruderOffsetX(2);
+  extruderOffsets[1][1] = machineConfiguration.getExtruderOffsetY(2);
+  extruderOffsets[1][2] = machineConfiguration.getExtruderOffsetZ(2);
+}
+
+//Adjust the limits depending on the bed center
+if (bedCenter.x == 0 && bedCenter.y == 0) {
+  printerLimits.x.min = -machineConfiguration.getWidth() / 2;
+  printerLimits.y.min = -machineConfiguration.getDepth() / 2;
+  printerLimits.z.min = 0;
+  printerLimits.x.max = machineConfiguration.getWidth() / 2;
+  printerLimits.y.max = machineConfiguration.getDepth() / 2;
+  printerLimits.z.max = machineConfiguration.getHeight();
+}
+
+if (bedCenter.z > 0) {printerLimits.z.min += bedCenter.z;}
 }
 
 function onClose() {
@@ -190,7 +218,6 @@ function onRapid(_x, _y, _z) {
 }
 
 function onLinearExtrude(_x, _y, _z, _f, _e) {
-  extrusionLength = _e;
   var x = xOutput.format(_x);
   var y = yOutput.format(_y);
   var z = zOutput.format(_z);
@@ -210,9 +237,16 @@ function onBedTemp(temp, wait) {
 }
 
 function onExtruderChange(id) {
-  writeBlock(tFormat.format(id));
-  activeExtruder = id;
-  onExtrusionReset(0);
+  if (id < numberOfExtruders) {
+    writeBlock(tFormat.format(id));
+    activeExtruder = id;
+    xOutput.reset();
+    yOutput.reset();
+    zOutput.reset();
+  } else {
+    error(localize("This printer doesn't support the extruder " + xyzFormat.format(id) + " !"));
+  }
+
 }
 
 function onExtrusionReset(length) {
@@ -221,18 +255,23 @@ function onExtrusionReset(length) {
 }
 
 function onLayer(num) {
-  writeComment("Layer: " + num);
+  writeComment("Layer : " + integerFormat.format(num) + " of " + integerFormat.format(layerCount));
 }
 
 function onExtruderTemp(temp, wait, id) {
-  if (wait) {
-    writeBlock(mFormat.format(109), sOutput.format(temp), tFormat.format(id));
+  if (id < numberOfExtruders) {
+    if (wait) {
+      writeBlock(mFormat.format(109), sOutput.format(temp), tFormat.format(id));
+    } else {
+      writeBlock(mFormat.format(104), sOutput.format(temp), tFormat.format(id));
+    }
   } else {
-    writeBlock(mFormat.format(104), sOutput.format(temp), tFormat.format(id));
+    error(localize("This printer doesn't support the extruder " + xyzFormat.format(id) + " !"));
   }
 }
 
 function onFanSpeed(speed, id) {
+   // to do handle id information 
   if (speed == 0) {
     writeBlock(mFormat.format(107));
   } else {
@@ -249,6 +288,7 @@ function onParameter(name, value) {
   case "onPrime":
     prime(value);
     break;
+      //warning or error message on unhandled parameter?
   }
 }
 
