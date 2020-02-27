@@ -75,8 +75,15 @@ function onOpen() {
     writeComment(programComment);
   }
 
+  var pad = function(num, size) { return ('000' + num).slice(size * -1); },
+  time = parseFloat(printTime).toFixed(3),
+  hours = Math.floor(time / 60 / 60),
+  minutes = Math.floor(time / 60) % 60,
+  seconds = Math.floor(time - minutes * 60),
+  pTime = pad(hours, 2) + ' hours ' + pad(minutes, 2) + ' minutes ' + pad(seconds, 2) + ' seconds';
+
   writeComment("Printer Name: " + machineConfiguration.getVendor() + " " + machineConfiguration.getModel());
-  writeComment("Print time: " + xyzFormat.format(printTime) + "s");
+  writeComment("Print time: " + pTime);
   writeComment("Extruder 1 Material used: " + dimensionFormat.format(getExtruder(1).extrusionLength));
   writeComment("Extruder 1 Material name: " + getExtruder(1).materialName);
   writeComment("Extruder 1 Filament diameter: " + dimensionFormat.format(getExtruder(1).filamentDiameter));
@@ -107,7 +114,7 @@ writeComment("width: " + dimensionFormat.format(printerLimits.x.max));
 writeComment("depth: " + dimensionFormat.format(printerLimits.y.max));
 writeComment("height: " + dimensionFormat.format(printerLimits.z.max));
 writeComment("Count of bodies: " + integerFormat.format(partCount));
-writeComment("Version of Fusion: " + getGlobalParameter("version"));
+writeComment("Gennerated by: Fusion 360 " + getGlobalParameter("version"));
 }
 
 function getPrinterGeometry() {
@@ -164,17 +171,6 @@ function onSection() {
   }
   writeBlock(gAbsIncModal.format(90)); // absolute spatial co-ordinates
   writeBlock(mFormat.format(82)); // absolute extrusion co-ordinates
-
-  //homing
-  writeRetract(Z); // retract in Z
-
-  //lower build plate before homing in XY
-  var initialPosition = getFramePosition(currentSection.getInitialPosition());
-  writeBlock(gMotionModal.format(1), zOutput.format(initialPosition.z), feedOutput.format(highFeedRate));
-
-  // home XY
-  writeRetract(X, Y);
-  writeBlock(gFormat.format(92), eOutput.format(0));
 }
 
 function onRapid(_x, _y, _z) {
