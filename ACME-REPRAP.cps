@@ -142,6 +142,8 @@ function getPrinterGeometry() {
 
 function onClose() {
   writeComment("END OF GCODE");
+  writeBlock(mFormat.format(117) + " PRINT FINISHED")
+  writeBlock(mFormat.format(84) + "; Disable Motors")
 }
 
 function onComment(message) {
