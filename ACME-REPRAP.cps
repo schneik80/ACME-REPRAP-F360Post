@@ -141,9 +141,9 @@ function getPrinterGeometry() {
 }
 
 function onClose() {
+  writeBlock(tFormat.format(-1))
   writeComment("END OF GCODE");
   writeBlock(mFormat.format(117) + " PRINT FINISHED")
-  writeBlock(mFormat.format(84) + "; Disable Motors")
 }
 
 function onComment(message) {
@@ -227,6 +227,20 @@ function onLayer(num) {
 function onExtruderTemp(temp, wait, id) {
   if (id < numberOfExtruders) {
     if (wait) {
+      writeBlock(mFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(100));
+      writeBlock(tFormat.format(id));
+      writeBlock(mFormat.format(116));
+    } else {
+      writeBlock(mFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(100));
+    }
+  } else {
+    error(localize("This printer doesn't support the extruder ") + integerFormat.format(id) + " !");
+  }
+}
+
+/* function onExtruderTemp(temp, wait, id) {
+  if (id < numberOfExtruders) {
+    if (wait) {
       writeBlock(mFormat.format(109), sOutput.format(temp), tFormat.format(id));
     } else {
       writeBlock(mFormat.format(104), sOutput.format(temp), tFormat.format(id));
@@ -234,7 +248,7 @@ function onExtruderTemp(temp, wait, id) {
   } else {
     error(localize("This printer doesn't support the extruder ") + integerFormat.format(id) + " !");
   }
-}
+} */
 
 function onFanSpeed(speed, id) {
    // to do handle id information 
