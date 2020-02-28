@@ -260,7 +260,7 @@ function setFeedRate(value) {
 }
 
 function writeComment(text) {
-  writeln(";" + text);
+  writeln("; " + text);
 }
 
 function writeCustomCommand(text) {
