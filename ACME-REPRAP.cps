@@ -99,22 +99,22 @@ function onOpen() {
   hasGlobalParameter("ext2-nozzle-dia") &&
   hasGlobalParameter("ext2-temp") && hasGlobalParameter("ext2-filament-dia") &&
   hasGlobalParameter("ext2-material-name")
-) {
-  writeComment("Extruder 2 material used: " + dimensionFormat.format(getExtruder(2).extrusionLength));
-  writeComment("Extruder 2 material name: " + getExtruder(2).materialName);
-  writeComment("Extruder 2 filament diameter: " + dimensionFormat.format(getExtruder(2).filamentDiameter));
-  writeComment("Extruder 2 nozzle diameter: " + dimensionFormat.format(getExtruder(2).nozzleDiameter));
-  writeComment("Extruder 2 max temp: " + integerFormat.format(getExtruder(2).temperature));
-  writeComment("Extruder 2 offset x: " + dimensionFormat.format(extruderOffsets[1][0]));
-  writeComment("Extruder 2 offset y: " + dimensionFormat.format(extruderOffsets[1][1]));
-  writeComment("Extruder 2 offset z: " + dimensionFormat.format(extruderOffsets[1][2]));
-}
+  ) {
+    writeComment("Extruder 2 material used: " + dimensionFormat.format(getExtruder(2).extrusionLength));
+    writeComment("Extruder 2 material name: " + getExtruder(2).materialName);
+    writeComment("Extruder 2 filament diameter: " + dimensionFormat.format(getExtruder(2).filamentDiameter));
+    writeComment("Extruder 2 nozzle diameter: " + dimensionFormat.format(getExtruder(2).nozzleDiameter));
+    writeComment("Extruder 2 max temp: " + integerFormat.format(getExtruder(2).temperature));
+    writeComment("Extruder 2 offset x: " + dimensionFormat.format(extruderOffsets[1][0]));
+    writeComment("Extruder 2 offset y: " + dimensionFormat.format(extruderOffsets[1][1]));
+    writeComment("Extruder 2 offset z: " + dimensionFormat.format(extruderOffsets[1][2]));
+  } 
 
-writeComment("width: " + dimensionFormat.format(printerLimits.x.max));
-writeComment("depth: " + dimensionFormat.format(printerLimits.y.max));
-writeComment("height: " + dimensionFormat.format(printerLimits.z.max));
-writeComment("Count of bodies: " + integerFormat.format(partCount));
-writeComment("Gennerated by: Fusion 360 " + getGlobalParameter("version"));
+  writeComment("width: " + dimensionFormat.format(printerLimits.x.max));
+  writeComment("depth: " + dimensionFormat.format(printerLimits.y.max));
+  writeComment("height: " + dimensionFormat.format(printerLimits.z.max));
+  writeComment("Count of bodies: " + integerFormat.format(partCount));
+  writeComment("Gennerated by: Fusion 360 " + getGlobalParameter("version"));
 }
 
 function getPrinterGeometry() {
@@ -141,7 +141,9 @@ function getPrinterGeometry() {
 }
 
 function onClose() {
+  writeBlock(tFormat.format(-1))
   writeComment("END OF GCODE");
+  writeBlock(mFormat.format(117) + " PRINT FINISHED")
 }
 
 function onComment(message) {
@@ -225,6 +227,20 @@ function onLayer(num) {
 function onExtruderTemp(temp, wait, id) {
   if (id < numberOfExtruders) {
     if (wait) {
+      writeBlock(mFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(100));
+      writeBlock(tFormat.format(id));
+      writeBlock(mFormat.format(116));
+    } else {
+      writeBlock(mFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(100));
+    }
+  } else {
+    error(localize("This printer doesn't support the extruder ") + integerFormat.format(id) + " !");
+  }
+}
+
+/* function onExtruderTemp(temp, wait, id) {
+  if (id < numberOfExtruders) {
+    if (wait) {
       writeBlock(mFormat.format(109), sOutput.format(temp), tFormat.format(id));
     } else {
       writeBlock(mFormat.format(104), sOutput.format(temp), tFormat.format(id));
@@ -232,7 +248,7 @@ function onExtruderTemp(temp, wait, id) {
   } else {
     error(localize("This printer doesn't support the extruder ") + integerFormat.format(id) + " !");
   }
-}
+} */
 
 function onFanSpeed(speed, id) {
    // to do handle id information 
@@ -260,7 +276,7 @@ function setFeedRate(value) {
 }
 
 function writeComment(text) {
-  writeln(";" + text);
+  writeln("; " + text);
 }
 
 function writeCustomCommand(text) {
