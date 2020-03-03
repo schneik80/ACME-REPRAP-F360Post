@@ -231,7 +231,7 @@ function onExtruderTemp(temp, wait, id) {
       writeBlock(tFormat.format(id));
       writeBlock(mFormat.format(116));
     } else {
-      writeBlock(mFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(100));
+      writeBlock(gFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(100));
     }
   } else {
     error(localize("This printer doesn't support the extruder ") + integerFormat.format(id) + " !");
