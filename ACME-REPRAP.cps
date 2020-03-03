@@ -83,7 +83,7 @@ function onOpen() {
   pTime = pad(hours, 2) + ' hours ' + pad(minutes, 2) + ' minutes ' + pad(seconds, 2) + ' seconds';
 
   writeComment("Printer Name: " + machineConfiguration.getVendor() + " " + machineConfiguration.getModel());
-  writeComment("Print time: " + pTime);
+  writeComment("Build time: " + pTime);
   writeComment("Extruder 1 Material used: " + dimensionFormat.format(getExtruder(1).extrusionLength));
   writeComment("Extruder 1 Material name: " + getExtruder(1).materialName);
   writeComment("Extruder 1 Filament diameter: " + dimensionFormat.format(getExtruder(1).filamentDiameter));
@@ -114,7 +114,7 @@ function onOpen() {
   writeComment("depth: " + dimensionFormat.format(printerLimits.y.max));
   writeComment("height: " + dimensionFormat.format(printerLimits.z.max));
   writeComment("Count of bodies: " + integerFormat.format(partCount));
-  writeComment("Gennerated by: Fusion 360 " + getGlobalParameter("version"));
+  writeComment("G-code gennerated by Fusion 360 " + getGlobalParameter("version"));
 }
 
 function getPrinterGeometry() {
@@ -227,7 +227,7 @@ function onLayer(num) {
 function onExtruderTemp(temp, wait, id) {
   if (id < numberOfExtruders) {
     if (wait) {
-      writeBlock(mFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(100));
+      writeBlock(gFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(100));
       writeBlock(tFormat.format(id));
       writeBlock(mFormat.format(116));
     } else {
