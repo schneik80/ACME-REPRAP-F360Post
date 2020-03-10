@@ -11,6 +11,6 @@
  ## Instalation
  Download the cps file.
  If using Fusion 360 cloud posts. Upload the cps to the post folder in your Team's asset folder. This requires Team Admin priveledges.
- If using local posts, move this post your local post directory.
- * On Windows this is located in %appdird%/Foo //TODO get right paths
- * On MAC OS this is located in ~/Library/foo
+ If using local posts, move this post to your local post directory.
+ * On Windows this is located in C:\Users\ <<Your user name >> \AppData\Roaming\Autodesk\Fusion 360 CAM\Posts\ 
+ * On MAC OS this is located in ~/Autodesk/Fusion 360 CAM/Posts/
