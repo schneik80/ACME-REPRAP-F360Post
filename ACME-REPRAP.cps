@@ -1,7 +1,5 @@
 /**
-  Copyright (C) 2018-2019 by Autodesk, Inc.
-  All rights reserved.
-
+  CC License 2020 by ACME CAD CAM
   3D additive printer post configuration.
 
   $Revision: 42614 ccbc0b14704b013ada243633a5bc25f45bcb39f5 $
@@ -17,7 +15,7 @@ legal = "Attribution-NonCommercial-ShareAlike 4.0 International";
 certificationLevel = 2;
 minimumRevision = 45633;
 
-longDescription = "Simple post to export toolpath for generic FFF Machine in gcode format";
+longDescription = "Simple post to export toolpath for Duet3D machines in reprap firmware gcode format";
 
 extension = "gcode";
 setCodePage("ascii");
