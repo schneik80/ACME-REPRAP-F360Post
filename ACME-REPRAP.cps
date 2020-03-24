@@ -34,11 +34,13 @@ var printerLimits = {
 // user-defined properties
 properties = {
   stanbyTemp: 0,
+  toolOverride: 0,
 };
 
 // user-defined property definitions
 propertyDefinitions = {
   stanbyTemp: {title: "Standby Temp", description: "Specifies the standby temperature for extruders", type: "number"},
+  toolOverride: {title: "Tool 0 Override", description: "Override the priamry tool with a specific tool 0 - 3", type: "number"},
 };
 
 var extruderOffsets = [[0, 0, 0], [0, 0, 0]];
@@ -182,9 +184,10 @@ function onSection() {
 }
 
 function onClose() {
-  writeBlock(tFormat.format(-1))
+  writeBlock(tFormat.format(-1));
   writeComment("END OF GCODE");
-  writeBlock(mFormat.format(117) + " PRINT FINISHED")
+  writeBlock(mFormat.format(117) + " PRINT FINISHED");
+  writeBlock(mFormat.format(400));
 }
 
 function onRapid(_x, _y, _z) {
@@ -238,12 +241,16 @@ function onLayer(num) {
 
 function onExtruderTemp(temp, wait, id) {
   if (id < numberOfExtruders) {
-    if (wait) {
-      writeBlock(gFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(sTemp));
-      writeBlock(tFormat.format(id));
-      writeBlock(mFormat.format(116));
+    if (id == 0){
+      id = properties.toolOverride;
+      if (wait) {
+        writeBlock(gFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(sTemp));
+        writeBlock(tFormat.format(id));
+        writeBlock(mFormat.format(116));
+      } else {
+        writeBlock(gFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(sTemp) + " ; DELETE ME");
+      }
     } else {
-      writeBlock(gFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(sTemp) + " ; DELETE ME");
     }
   } else {
     error(localize("This printer doesn't support the extruder ") + integerFormat.format(id) + " !");
