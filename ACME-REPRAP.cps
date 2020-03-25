@@ -24,27 +24,28 @@ capabilities = CAPABILITY_ADDITIVE;
 tolerance = spatial(0.002, MM);
 highFeedRate = toPreciseUnit(6000, MM);
 
-// needed for range checking
+// Needed for range checking
 var printerLimits = {
   x: {min: 0, max: 300.0}, //Defines the x bed size
   y: {min: 0, max: 300.0}, //Defines the y bed size
   z: {min: 0, max: 300.0} //Defines the z bed size
 };
 
-// user-defined properties
+// User-defined properties
 properties = {
   stanbyTemp: 0,
   toolOverride: 0,
 };
 
-// user-defined property definitions
+// User-defined property definitions
 propertyDefinitions = {
   stanbyTemp: {title: "Standby Temp", description: "Specifies the standby temperature for extruders", type: "number"},
-  toolOverride: {title: "Tool 0 Override", description: "Override the priamry tool with a specific tool 0 - 3", type: "number"},
+  toolOverride: {title: "Tool 0 Override", description: "Override the priamry tool with a specific ( Set tool 0 - 3)", type: "number"},
 };
 
+// Workaround properties
 var extruderOffsets = [[0, 0, 0], [0, 0, 0]];
-var activeExtruder = 0;  //Track the active extruder.
+var activeExtruder = 0;  // Track the active extruder.
 
 var xyzFormat = createFormat({decimals: (unit == MM ? 3 : 4)});
 var xFormat = createFormat({decimals: (unit == MM ? 3 : 4)});
@@ -58,9 +59,9 @@ var feedFormat = createFormat({decimals: (unit == MM ? 0 : 1)});
 var integerFormat = createFormat({decimals:0});
 var dimensionFormat = createFormat({decimals: (unit == MM ? 3 : 4), zeropad: false, suffix: (unit == MM ? "mm" : "in")});
 
-var gMotionModal = createModal({force: true}, gFormat); // modal group 1 // G0-G3, ...
-var gPlaneModal = createModal({onchange: function () {gMotionModal.reset();}}, gFormat); // modal group 2 // G17-19 //Actually unused
-var gAbsIncModal = createModal({}, gFormat); // modal group 3 // G90-91
+var gMotionModal = createModal({force: true}, gFormat); // Modal group 1 // G0-G3, ...
+var gPlaneModal = createModal({onchange: function () {gMotionModal.reset();}}, gFormat); // Modal group 2 // G17-19 //Actually unused
+var gAbsIncModal = createModal({}, gFormat); // Modal group 3 // G90-91
 
 var xOutput = createVariable({prefix: "X"}, xFormat);
 var yOutput = createVariable({prefix: "Y"}, yFormat);
@@ -98,10 +99,12 @@ function getPrinterGeometry() {
   }
 }
 
+// Write comments
 function onComment(message) {
   writeComment(message);
 }
 
+// Start G-codes
 function onOpen() {
   getPrinterGeometry();
 
@@ -113,12 +116,15 @@ function onOpen() {
   }
 
   var pad = function(num, size) { return ('000' + num).slice(size * -1); },
+
+// Time calculation
   time = parseFloat(printTime).toFixed(3),
   hours = Math.floor(time / 60 / 60),
   minutes = Math.floor(time / 60) % 60,
   seconds = Math.floor(time - minutes * 60),
   pTime = pad(hours, 2) + ' hours ' + pad(minutes, 2) + ' minutes ' + pad(seconds, 2) + ' seconds';
 
+// Write Job info
   writeComment("Printer Name: " + machineConfiguration.getVendor() + " " + machineConfiguration.getModel());
   writeComment("Build time: " + pTime);
   writeComment("Extruder 1 Material used: " + dimensionFormat.format(getExtruder(1).extrusionLength));
@@ -130,10 +136,7 @@ function onOpen() {
   writeComment("Extruder 1 offset z: " + dimensionFormat.format(extruderOffsets[0][2]));
   writeComment("Max temp: " + integerFormat.format(getExtruder(1).temperature));
   writeComment("Bed temp: " + integerFormat.format(bedTemp));
-
-  sTemp = properties.stanbyTemp;
-  writeComment("Stanby temp; " + sTemp);
-
+  writeComment("Stanby temp; " + properties.stanbyTemp);
   writeComment("Layer Count: " + integerFormat.format(layerCount));
 
   if (hasGlobalParameter("ext2-extrusion-len") &&
@@ -170,24 +173,26 @@ function onSection() {
     }
   }
 
-  // set unit
+  // Set unit
   switch (unit) {
   case IN:
-    writeBlock(gFormat.format(20));
+    writeBlock(gFormat.format(20) + " ; Use inches");
     break;
   case MM:
-    writeBlock(gFormat.format(21));
+    writeBlock(gFormat.format(21) + " ; Use mm");
     break;
   }
   writeBlock(gAbsIncModal.format(90)); // absolute spatial co-ordinates
   writeBlock(mFormat.format(82)); // absolute extrusion co-ordinates
 }
 
+// End G-codes
 function onClose() {
-  writeBlock(tFormat.format(-1));
-  writeComment("END OF GCODE");
+  writeBlock(tFormat.format(-1) + " ; Drop tool off");
+  writeBlock("M0 ; All heaters off");
+  writeBlock(mFormat.format(400) + " ; Clear move buffer");
   writeBlock(mFormat.format(117) + " PRINT FINISHED");
-  writeBlock(mFormat.format(400));
+  writeComment("END OF GCODE");
 }
 
 function onRapid(_x, _y, _z) {
@@ -244,11 +249,11 @@ function onExtruderTemp(temp, wait, id) {
     if (id == 0){
       id = properties.toolOverride;
       if (wait) {
-        writeBlock(gFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(sTemp));
-        writeBlock(tFormat.format(id));
+        writeBlock(gFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(properties.stanbyTemp));
+        writeBlock(tFormat.format(id) + " ; Use Tool " + id);
         writeBlock(mFormat.format(116));
       } else {
-        writeBlock(gFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(sTemp) + " ; DELETE ME");
+        writeBlock(gFormat.format(10), pFormat.format(id), sOutput.format(temp), rOutput.format(properties.stanbyTemp) + " ; DELETE ME");
       }
     } else {
     }
@@ -272,39 +277,41 @@ function onExtruderTemp(temp, wait, id) {
 function onFanSpeed(speed, id) {
    // to do handle id information 
   if (speed == 0) {
-    writeBlock(mFormat.format(107));
+    writeBlock(mFormat.format(107) + " ; Fan off");
   } else {
-    writeBlock(mFormat.format(106), sOutput.format(speed));
+    writeBlock(mFormat.format(106), sOutput.format(speed) + " ; Set fan");
   }
 }
 
 function onParameter(name, value) {
   switch (name) {
-  //feedrate is set before rapid moves and extruder change
+  // Feedrate is set before rapid moves and extruder change
   case "feedRate":
     setFeedRate(value);
     break;
-      //warning or error message on unhandled parameter?
+      // Warning or error message on unhandled parameter?
   }
 }
 
-//user defined functions
+// User defined functions
 function setFeedRate(value) {
   feedOutput.reset();
   writeBlock(gFormat.format(1), feedOutput.format(value));
 }
 
+// Write comments
 function writeComment(text) {
   writeln("; " + text);
 }
 
+// Write G-code pass through custom commands
 function writeCustomCommand(text) {
   if (text.length > 0) {
     writeln(text);
   }
 }
 
-/** Output block to do safe retract and/or move to home position. */
+// Output block to do safe retract and/or move to home position
 function writeRetract() {
   if (arguments.length == 0) {
     error(localize("No axis specified for writeRetract()."));
