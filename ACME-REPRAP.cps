@@ -57,7 +57,9 @@ var extruderOffsets = [
   [0, 0, 0],
   [0, 0, 0]
 ]
-var activeExtruder = 0 // Track the active extruder.
+var activeExtruder = 0 // Track the active extruder
+
+var totalFilament = 0 // Track the total fillament
 
 var xyzFormat = createFormat({ decimals: unit == MM ? 3 : 4 })
 var xFormat = createFormat({ decimals: unit == MM ? 3 : 4 })
@@ -158,6 +160,9 @@ function onOpen () {
     'Extruder 1 Material used: ' +
       dimensionFormat.format(getExtruder(1).extrusionLength)
   )
+
+  totalFilament = totalFilament + getExtruder(1).extrusionLength
+
   writeComment('Extruder 1 Material name: ' + getExtruder(1).materialName)
   writeComment(
     'Extruder 1 Filament diameter: ' +
@@ -176,13 +181,6 @@ function onOpen () {
   writeComment(
     'Extruder 1 offset z: ' + dimensionFormat.format(extruderOffsets[0][2])
   )
-  writeComment('Max temp: ' + integerFormat.format(getExtruder(1).temperature))
-  writeComment('Bed temp: ' + integerFormat.format(bedTemp))
-  writeComment('Stanby temp; ' + properties.stanbyTemp)
-  writeComment('Layer Count: ' + integerFormat.format(layerCount))
-  writeComment('Print volume X: ' + dimensionFormat.format(printerLimits.x.max))
-  writeComment('Print volume Y: ' + dimensionFormat.format(printerLimits.y.max))
-  writeComment('Print volume Z: ' + dimensionFormat.format(printerLimits.z.max))
 
   if (
     hasGlobalParameter('ext2-extrusion-len') &&
@@ -195,6 +193,9 @@ function onOpen () {
       'Extruder 2 material used: ' +
         dimensionFormat.format(getExtruder(2).extrusionLength)
     )
+
+    totalFilament = totalFilament + getExtruder(2).extrusionLength
+
     writeComment('Extruder 2 material name: ' + getExtruder(2).materialName)
     writeComment(
       'Extruder 2 filament diameter: ' +
@@ -217,6 +218,14 @@ function onOpen () {
       'Extruder 2 offset z: ' + dimensionFormat.format(extruderOffsets[1][2])
     )
   }
+  writeComment('Max temp: ' + integerFormat.format(getExtruder(1).temperature))
+  writeComment('Bed temp: ' + integerFormat.format(bedTemp))
+  writeComment('Standby temp; ' + properties.stanbyTemp)
+  writeComment('Layer Count: ' + integerFormat.format(layerCount))
+  writeComment('Filament length: ' + dimensionFormat.format(totalFilament))
+  writeComment('Print volume X: ' + dimensionFormat.format(printerLimits.x.max))
+  writeComment('Print volume Y: ' + dimensionFormat.format(printerLimits.y.max))
+  writeComment('Print volume Z: ' + dimensionFormat.format(printerLimits.z.max))
 }
 
 function onSection () {
@@ -327,6 +336,7 @@ function onExtruderChange (id) {
     xOutput.reset()
     yOutput.reset()
     zOutput.reset()
+    writeBlock(gFormat.format(29) + ' S1')
   } else {
     error(
       localize("This printer doesn't support the extruder ") +
@@ -362,6 +372,7 @@ function onExtruderTemp (temp, wait, id) {
           rOutput.format(properties.stanbyTemp)
         )
         writeBlock(tFormat.format(id) + ' ; Use Tool ' + id)
+        writeBlock(gFormat.format(29) + ' S1')
         writeBlock(mFormat.format(116))
       } else {
         writeBlock(
@@ -396,6 +407,15 @@ function onParameter (name, value) {
     // Feedrate is set before rapid moves and extruder change
     case 'feedRate':
       setFeedRate(value)
+      break
+    case 'customCommand':
+      if (value == 'start_gcode') {
+        //anyhting you want to write before setting temps
+        writeBlock(gFormat.format(28) + ' Z ; Probe Z')
+      }
+      if (value == 'end_gcode') {
+        //anyhting you want to write before end gcodes
+      }
       break
     // Warning or error message on unhandled parameter?
   }
