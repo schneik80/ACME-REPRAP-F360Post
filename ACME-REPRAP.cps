@@ -1,3 +1,4 @@
+/// <reference path="C:\Users\schneik\.vscode\extensions\autodesk.hsm-post-processor-3.1.0\res\language files\globals.d.ts" />
 /**
   CC License 2020 by ACME CAD CAM
   3D additive printer post configuration.
@@ -24,6 +25,7 @@ setCodePage('ascii')
 capabilities = CAPABILITY_ADDITIVE
 tolerance = spatial(0.002, MM)
 highFeedrate = unit == MM ? 6000 : 236
+
 
 // needed for range checking, will be effectively passed from Fusion
 var printerLimits = {
@@ -61,6 +63,11 @@ var activeExtruder = 0 // Track the active extruder
 
 var totalFilament = 0 // Track the total fillament
 
+var zHolder = 0
+var layerOneHeight = 0
+var layerTwoHeight = 0
+var layerAllHeight = 0
+
 var xyzFormat = createFormat({ decimals: unit == MM ? 3 : 4 })
 var xFormat = createFormat({ decimals: unit == MM ? 3 : 4 })
 var yFormat = createFormat({ decimals: unit == MM ? 3 : 4 })
@@ -89,6 +96,7 @@ var pFormat = createFormat({
   decimals: 0
 })
 var feedFormat = createFormat({ decimals: unit == MM ? 0 : 1 })
+var heightFormat = createFormat({ decimals: 2 })
 var integerFormat = createFormat({ decimals: 0 })
 var dimensionFormat = createFormat({
   decimals: unit == MM ? 3 : 4,
@@ -221,8 +229,6 @@ function onOpen () {
   writeComment('Max temp: ' + integerFormat.format(getExtruder(1).temperature))
   writeComment('Bed temp: ' + integerFormat.format(bedTemp))
   writeComment('Standby temp; ' + properties.stanbyTemp)
-  writeComment('Layer Count: ' + integerFormat.format(layerCount))
-  writeComment('Filament length: ' + dimensionFormat.format(totalFilament))
   writeComment('Print volume X: ' + dimensionFormat.format(printerLimits.x.max))
   writeComment('Print volume Y: ' + dimensionFormat.format(printerLimits.y.max))
   writeComment('Print volume Z: ' + dimensionFormat.format(printerLimits.z.max))
@@ -259,10 +265,16 @@ function onSection () {
 // End G-codes
 function onClose () {
   writeBlock(tFormat.format(-1) + ' ; Drop tool off')
-  writeBlock('M0 ; All heaters off')
   writeBlock(mFormat.format(400) + ' ; Clear move buffer')
   writeBlock(mFormat.format(117) + ' PRINT FINISHED')
+  writeBlock('M0 ; All heaters off')
   writeComment('END OF GCODE')
+  writeComment('--------------------------------')
+  writeComment('PrintStatistics,')
+  writeComment('1stLayer, ' + layerOneHeight)
+  writeComment('layerHeigth, ' + layerAllHeight)
+  writeComment('LayerCount, ' + getGlobalParameter('layer-cnt'))
+  writeComment('Filament length: ' + dimensionFormat.format(totalFilament))
 }
 
 // Writes the specified block.
@@ -305,6 +317,7 @@ function onRapid (_x, _y, _z) {
   var x = xOutput.format(_x)
   var y = yOutput.format(_y)
   var z = zOutput.format(_z)
+  zHolder = _z
   if (x || y || z) {
     writeBlock(gMotionModal.format(0), x, y, z)
   }
@@ -352,6 +365,15 @@ function onExtrusionReset (length) {
 }
 
 function onLayer (num) {
+  if (num == 2) {
+    layerOneHeight = heightFormat.format(zHolder)
+  }
+
+  if (num ==3){
+    layerTwoHeight = heightFormat.format(zHolder)
+    layerAllHeight = layerTwoHeight - layerOneHeight
+  }
+  
   writeComment(
     'Layer : ' +
       integerFormat.format(num) +
