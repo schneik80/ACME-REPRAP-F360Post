@@ -1,11 +1,11 @@
-/// <reference path="C:\Users\schneik\.vscode\extensions\autodesk.hsm-post-processor-3.1.0\res\language files\globals.d.ts" />
+/// <reference path="/Users/schneik/.vscode/extensions/autodesk.hsm-post-processor-3.1.1/res/language files/globals.d.ts" />
 /**
   CC License 2020 by ACME CAD CAM
   3D additive printer post configuration.
 
   $Revision: 42614 ccbc0b14704b013ada243633a5bc25f45bcb39f5 $
   $Date: 2019-12-20 12:00:51 $
-  
+
   FORKID {A316FBC4-FA6E-41C5-A347-3D94F72F5D06}
 */
 
@@ -141,18 +141,14 @@ function onOpen () {
   var pad = function (num, size) {
       return ('000' + num).slice(size * -1)
     },
-    // Time calculation
-    time = parseFloat(printTime).toFixed(3),
-    hours = Math.floor(time / 60 / 60),
-    minutes = Math.floor(time / 60) % 60,
-    seconds = Math.floor(time - minutes * 60),
-    pTime =
-      pad(hours, 2) +
-      ' hours ' +
-      pad(minutes, 2) +
-      ' minutes ' +
-      pad(seconds, 2) +
-      ' seconds'
+
+  // Time calculation
+  time = parseFloat(printTime).toFixed(3),
+  hours = Math.floor(time / 60 / 60),
+  minutes = Math.floor(time / 60) % 60,
+  seconds = Math.floor(time - minutes * 60),
+  pTime = pad(hours, 2) + ' hours ' + pad(minutes, 2) + ' minutes ' + pad(seconds, 2) + ' seconds'
+
 
   // Write Job info
   writeComment('Build time: ' + pTime)
@@ -275,7 +271,6 @@ function onClose () {
   writeComment('Layer heigth: ' + layerAllHeight)
   writeComment('Layer count: ' + getGlobalParameter('layer-cnt'))
   writeComment('Filament length: ' + dimensionFormat.format(totalFilament))
-  writeComment('Build time: ' + pTime)
 }
 
 // Writes the specified block.
