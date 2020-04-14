@@ -267,8 +267,8 @@ function onClose () {
   writeComment('--------------------------------')
   writeComment('Print Statistics')
   writeComment('--------------------------------')
-  writeComment('Fist Layer heigth: ' + layerOneHeight)
-  writeComment('Layer heigth: ' + layerAllHeight)
+  writeComment('Fist Layer height: ' + layerOneHeight)
+  writeComment('Layer height: ' + layerAllHeight)
   writeComment('Layer count: ' + getGlobalParameter('layer-cnt'))
   writeComment('Filament length: ' + dimensionFormat.format(totalFilament))
 }
