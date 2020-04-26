@@ -1,4 +1,3 @@
-/// <reference path="/Users/schneik/.vscode/extensions/autodesk.hsm-post-processor-3.1.1/res/language files/globals.d.ts" />
 /**
   CC License 2020 by ACME CAD CAM
   3D additive printer post configuration.
@@ -141,14 +140,18 @@ function onOpen () {
   var pad = function (num, size) {
       return ('000' + num).slice(size * -1)
     },
-
-  // Time calculation
-  time = parseFloat(printTime).toFixed(3),
-  hours = Math.floor(time / 60 / 60),
-  minutes = Math.floor(time / 60) % 60,
-  seconds = Math.floor(time - minutes * 60),
-  pTime = pad(hours, 2) + ' hours ' + pad(minutes, 2) + ' minutes ' + pad(seconds, 2) + ' seconds'
-
+    // Time calculation
+    time = parseFloat(printTime).toFixed(3),
+    hours = Math.floor(time / 60 / 60),
+    minutes = Math.floor(time / 60) % 60,
+    seconds = Math.floor(time - minutes * 60),
+    pTime =
+      pad(hours, 2) +
+      ' hours ' +
+      pad(minutes, 2) +
+      ' minutes ' +
+      pad(seconds, 2) +
+      ' seconds'
 
   // Write Job info
   writeComment('Build time: ' + pTime)
@@ -253,8 +256,8 @@ function onSection () {
       writeBlock(gFormat.format(21) + ' ; Use mm')
       break
   }
-  writeBlock(gAbsIncModal.format(90)) // absolute spatial co-ordinates
-  writeBlock(mFormat.format(82)) // absolute extrusion co-ordinates
+  writeBlock(gAbsIncModal.format(90)) // Absolute spatial co-ordinates
+  writeBlock(mFormat.format(82)) // Absolute extrusion co-ordinates
 }
 
 // End G-codes
@@ -412,7 +415,7 @@ function onExtruderTemp (temp, wait, id) {
 }
 
 function onFanSpeed (speed, id) {
-  // to do handle id information
+  // TODO handle id information
   if (speed == 0) {
     writeBlock(mFormat.format(107) + ' ; Fan off')
   } else {
@@ -428,11 +431,11 @@ function onParameter (name, value) {
       break
     case 'customCommand':
       if (value == 'start_gcode') {
-        //anyhting you want to write before setting temps
+        // Anyhting you want to write before setting temps
         writeBlock(gFormat.format(28) + ' Z ; Probe Z')
       }
       if (value == 'end_gcode') {
-        //anyhting you want to write before end gcodes
+        // Anyhting you want to write before end gcodes
       }
       break
     // Warning or error message on unhandled parameter?
