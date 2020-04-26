@@ -26,7 +26,6 @@ capabilities = CAPABILITY_ADDITIVE
 tolerance = spatial(0.002, MM)
 highFeedrate = unit == MM ? 6000 : 236
 
-
 // needed for range checking, will be effectively passed from Fusion
 var printerLimits = {
   x: { min: 0, max: 300.0 }, //Defines the x bed size
@@ -270,11 +269,13 @@ function onClose () {
   writeBlock('M0 ; All heaters off')
   writeComment('END OF GCODE')
   writeComment('--------------------------------')
-  writeComment('PrintStatistics,')
-  writeComment('1stLayer, ' + layerOneHeight)
-  writeComment('layerHeigth, ' + layerAllHeight)
-  writeComment('LayerCount, ' + getGlobalParameter('layer-cnt'))
+  writeComment('Print Statistics')
+  writeComment('--------------------------------')
+  writeComment('Fist Layer heigth: ' + layerOneHeight)
+  writeComment('Layer heigth: ' + layerAllHeight)
+  writeComment('Layer count: ' + getGlobalParameter('layer-cnt'))
   writeComment('Filament length: ' + dimensionFormat.format(totalFilament))
+  writeComment('Build time: ' + pTime)
 }
 
 // Writes the specified block.
@@ -369,11 +370,11 @@ function onLayer (num) {
     layerOneHeight = heightFormat.format(zHolder)
   }
 
-  if (num ==3){
+  if (num == 3) {
     layerTwoHeight = heightFormat.format(zHolder)
     layerAllHeight = layerTwoHeight - layerOneHeight
   }
-  
+
   writeComment(
     'Layer : ' +
       integerFormat.format(num) +
