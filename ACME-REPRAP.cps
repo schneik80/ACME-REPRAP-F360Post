@@ -4,7 +4,7 @@
 
   $Revision: 42614 ccbc0b14704b013ada243633a5bc25f45bcb39f5 $
   $Date: 2019-12-20 12:00:51 $
-  
+
   FORKID {A316FBC4-FA6E-41C5-A347-3D94F72F5D06}
 */
 
@@ -61,6 +61,11 @@ var activeExtruder = 0 // Track the active extruder
 
 var totalFilament = 0 // Track the total fillament
 
+var zHolder = 0
+var layerOneHeight = 0
+var layerTwoHeight = 0
+var layerAllHeight = 0
+
 var xyzFormat = createFormat({ decimals: unit == MM ? 3 : 4 })
 var xFormat = createFormat({ decimals: unit == MM ? 3 : 4 })
 var yFormat = createFormat({ decimals: unit == MM ? 3 : 4 })
@@ -89,6 +94,7 @@ var pFormat = createFormat({
   decimals: 0
 })
 var feedFormat = createFormat({ decimals: unit == MM ? 0 : 1 })
+var heightFormat = createFormat({ decimals: 2 })
 var integerFormat = createFormat({ decimals: 0 })
 var dimensionFormat = createFormat({
   decimals: unit == MM ? 3 : 4,
@@ -221,8 +227,6 @@ function onOpen () {
   writeComment('Max temp: ' + integerFormat.format(getExtruder(1).temperature))
   writeComment('Bed temp: ' + integerFormat.format(bedTemp))
   writeComment('Standby temp; ' + properties.stanbyTemp)
-  writeComment('Layer Count: ' + integerFormat.format(layerCount))
-  writeComment('Filament length: ' + dimensionFormat.format(totalFilament))
   writeComment('Print volume X: ' + dimensionFormat.format(printerLimits.x.max))
   writeComment('Print volume Y: ' + dimensionFormat.format(printerLimits.y.max))
   writeComment('Print volume Z: ' + dimensionFormat.format(printerLimits.z.max))
@@ -252,17 +256,24 @@ function onSection () {
       writeBlock(gFormat.format(21) + ' ; Use mm')
       break
   }
-  writeBlock(gAbsIncModal.format(90)) // absolute spatial co-ordinates
-  writeBlock(mFormat.format(82)) // absolute extrusion co-ordinates
+  writeBlock(gAbsIncModal.format(90)) // Absolute spatial co-ordinates
+  writeBlock(mFormat.format(82)) // Absolute extrusion co-ordinates
 }
 
 // End G-codes
 function onClose () {
   writeBlock(tFormat.format(-1) + ' ; Drop tool off')
-  writeBlock('M0 ; All heaters off')
   writeBlock(mFormat.format(400) + ' ; Clear move buffer')
   writeBlock(mFormat.format(117) + ' PRINT FINISHED')
+  writeBlock('M0 ; All heaters off')
   writeComment('END OF GCODE')
+  writeComment('--------------------------------')
+  writeComment('Print Statistics')
+  writeComment('--------------------------------')
+  writeComment('Fist Layer height: ' + layerOneHeight)
+  writeComment('Layer height: ' + layerAllHeight)
+  writeComment('Layer count: ' + getGlobalParameter('layer-cnt'))
+  writeComment('Filament length: ' + dimensionFormat.format(totalFilament))
 }
 
 // Writes the specified block.
@@ -305,6 +316,7 @@ function onRapid (_x, _y, _z) {
   var x = xOutput.format(_x)
   var y = yOutput.format(_y)
   var z = zOutput.format(_z)
+  zHolder = _z
   if (x || y || z) {
     writeBlock(gMotionModal.format(0), x, y, z)
   }
@@ -352,6 +364,15 @@ function onExtrusionReset (length) {
 }
 
 function onLayer (num) {
+  if (num == 2) {
+    layerOneHeight = heightFormat.format(zHolder)
+  }
+
+  if (num == 3) {
+    layerTwoHeight = heightFormat.format(zHolder)
+    layerAllHeight = layerTwoHeight - layerOneHeight
+  }
+
   writeComment(
     'Layer : ' +
       integerFormat.format(num) +
@@ -394,7 +415,7 @@ function onExtruderTemp (temp, wait, id) {
 }
 
 function onFanSpeed (speed, id) {
-  // to do handle id information
+  // TODO handle id information
   if (speed == 0) {
     writeBlock(mFormat.format(107) + ' ; Fan off')
   } else {
@@ -410,11 +431,11 @@ function onParameter (name, value) {
       break
     case 'customCommand':
       if (value == 'start_gcode') {
-        //anyhting you want to write before setting temps
+        // Anyhting you want to write before setting temps
         writeBlock(gFormat.format(28) + ' Z ; Probe Z')
       }
       if (value == 'end_gcode') {
-        //anyhting you want to write before end gcodes
+        // Anyhting you want to write before end gcodes
       }
       break
     // Warning or error message on unhandled parameter?
