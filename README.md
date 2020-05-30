@@ -26,5 +26,5 @@ On Windows this is located in C:\Users\ << Your user >> \AppData\Roaming\Autodes
 ![Win Install](img/win-install-directory.png)
 
 On MAC OS this is located in ~/Autodesk/Fusion 360 CAM/Posts/  
-![OSX Install](img/OSX-install-directory.png)  
+![OSX Install](img/OSX-Install-directory.png)  
 
