@@ -24,18 +24,81 @@ setCodePage('ascii')
 capabilities = CAPABILITY_ADDITIVE
 tolerance = spatial(0.002, MM)
 highFeedrate = unit == MM ? 6000 : 236
+minimumChordLength = spatial(0.25, MM)
+minimumCircularRadius = spatial(0.4, MM)
+maximumCircularRadius = spatial(1000, MM)
+minimumCircularSweep = toRad(0.01)
+maximumCircularSweep = toRad(180)
+allowHelicalMoves = false // disable helical support
+allowSpiralMoves = false // disable spiral support
+allowedCircularPlanes = 1 << PLANE_XY // allow XY circular motion
+
+// User-defined properties
+properties = {
+  stanbyTemp: 0,
+  toolOverride: 0,
+
+  // temperature tower features
+  _trigger: {
+    title: 'Trigger',
+    description:
+      'Specifies whether to use the Z-height or layer number as the trigger to change temperature of the active Extruder.',
+    type: 'enum',
+    values: [
+      { title: 'Disabled', id: 'disabled' },
+      { title: 'by Height', id: 'height' },
+      { title: 'by Layer', id: 'layer' }
+    ],
+    value: 'disabled',
+    scope: 'post',
+    group: 'temperatureTower'
+  },
+  _triggerValue: {
+    title: 'Trigger Value',
+    description:
+      'This number specifies either the Z-height or the layer number increment on when a change should be triggered.',
+    type: 'number',
+    value: 10,
+    scope: 'post',
+    group: 'temperatureTower'
+  },
+  tempStart: {
+    title: 'Start Temperature',
+    description:
+      'Specifies the starting temperature for the active Extruder (degrees C). Note that the temperature specified in the print settings will be overridden by this value.',
+    type: 'integer',
+    value: 190,
+    scope: 'post',
+    group: 'temperatureTower'
+  },
+  tempInterval: {
+    title: 'Temperature Interval',
+    description:
+      'Every step, increase the temperature of the active Extruder by this amount (degrees C).',
+    type: 'integer',
+    value: 5,
+    scope: 'post',
+    group: 'temperatureTower'
+  }
+}
+
+// Post property group
+groupDefinitions = {
+  temperatureTower: {
+    title: 'Temperature Tower',
+    description:
+      'Temperature Towers are used to test new filaments in order to identify the best printing temperature. ' +
+      'When utilized, this functionality generates a Gcode file where the temperature increases by a set amount, every step in height or layer number.',
+    collapsed: true,
+    order: 0
+  }
+}
 
 // needed for range checking, will be effectively passed from Fusion
 var printerLimits = {
   x: { min: 0, max: 300.0 }, //Defines the x bed size
   y: { min: 0, max: 300.0 }, //Defines the y bed size
   z: { min: 0, max: 300.0 } //Defines the z bed size
-}
-
-// User-defined properties
-properties = {
-  stanbyTemp: 0,
-  toolOverride: 0
 }
 
 // User-defined property definitions
@@ -125,6 +188,31 @@ var feedOutput = createVariable({ prefix: 'F' }, feedFormat)
 var eOutput = createVariable({ prefix: 'E' }, xyzFormat) // Extrusion length
 var sOutput = createVariable({ prefix: 'S', force: true }, xyzFormat) // Parameter temperature or speed
 var rOutput = createVariable({ prefix: 'R', force: true }, xyzFormat)
+var iOutput = createReferenceVariable({ prefix: 'I', force: true }, xyzFormat) // circular output
+var jOutput = createReferenceVariable({ prefix: 'J', force: true }, xyzFormat) // circular output
+
+// generic functions
+
+// writes the specified block.
+function writeBlock () {
+  writeWords(arguments)
+}
+
+function writeComment (text) {
+  writeln(';' + text)
+}
+
+function setFeedRate (value) {
+  feedOutput.reset()
+  writeBlock(gFormat.format(1), feedOutput.format(value))
+}
+
+// Write G-code pass through custom commands
+function writeCustomCommand (text) {
+  if (text.length > 0) {
+    writeln(text)
+  }
+}
 
 // Start G-codes
 function onOpen () {
@@ -258,6 +346,81 @@ function onSection () {
   }
   writeBlock(gAbsIncModal.format(90)) // Absolute spatial co-ordinates
   writeBlock(mFormat.format(82)) // Absolute extrusion co-ordinates
+
+  // homing
+  writeRetract(Z) // retract in Z
+
+  // lower build plate before homing in XY
+  feedOutput.reset()
+  var initialPosition = getFramePosition(currentSection.getInitialPosition())
+  writeBlock(
+    gMotionModal.format(1),
+    zOutput.format(initialPosition.z),
+    feedOutput.format(toPreciseUnit(highFeedrate, MM))
+  )
+
+  // home XY
+  writeRetract(X, Y)
+  writeBlock(gFormat.format(92), eOutput.format(0))
+  forceXYZE()
+}
+
+/** output block to do safe retract and/or move to home position. */
+function writeRetract () {
+  if (arguments.length == 0) {
+    error(localize('No axis specified for writeRetract().'))
+    return
+  }
+  var words = [] // store all retracted axes in an array
+  for (var i = 0; i < arguments.length; ++i) {
+    let instances = 0 // checks for duplicate retract calls
+    for (var j = 0; j < arguments.length; ++j) {
+      if (arguments[i] == arguments[j]) {
+        ++instances
+      }
+    }
+    if (instances > 1) {
+      // error if there are multiple retract calls for the same axis
+      error(localize('Cannot retract the same axis twice in one line'))
+      return
+    }
+    switch (arguments[i]) {
+      case X:
+        words.push(
+          'X' +
+            xyzFormat.format(
+              machineConfiguration.hasHomePositionX()
+                ? machineConfiguration.getHomePositionX()
+                : 0
+            )
+        )
+        xOutput.reset()
+        break
+      case Y:
+        words.push(
+          'Y' +
+            xyzFormat.format(
+              machineConfiguration.hasHomePositionY()
+                ? machineConfiguration.getHomePositionY()
+                : 0
+            )
+        )
+        yOutput.reset()
+        break
+      case Z:
+        words.push('Z' + xyzFormat.format(0))
+        zOutput.reset()
+        retracted = true // specifies that the tool has been retracted to the safe plane
+        break
+      default:
+        error(localize('Bad axis specified for writeRetract().'))
+        return
+    }
+  }
+  if (words.length > 0) {
+    gMotionModal.reset()
+    writeBlock(gFormat.format(28), gAbsIncModal.format(90), words) // retract
+  }
 }
 
 // End G-codes
@@ -274,11 +437,6 @@ function onClose () {
   writeComment('Layer height: ' + layerAllHeight)
   writeComment('Layer count: ' + getGlobalParameter('layer-cnt'))
   writeComment('Filament length: ' + dimensionFormat.format(totalFilament))
-}
-
-// Writes the specified block.
-function writeBlock () {
-  writeWords(arguments)
 }
 
 function getPrinterGeometry () {
@@ -307,11 +465,6 @@ function getPrinterGeometry () {
   }
 }
 
-// Write comments
-function onComment (message) {
-  writeComment(message)
-}
-
 function onRapid (_x, _y, _z) {
   var x = xOutput.format(_x)
   var y = yOutput.format(_y)
@@ -330,6 +483,25 @@ function onLinearExtrude (_x, _y, _z, _f, _e) {
   var e = eOutput.format(_e)
   if (x || y || z || f || e) {
     writeBlock(gMotionModal.format(1), x, y, z, f, e)
+  }
+}
+
+function onCircularExtrude (_clockwise, _cx, _cy, _cz, _x, _y, _z, _f, _e) {
+  var x = xOutput.format(_x)
+  var y = yOutput.format(_y)
+  var z = zOutput.format(_z)
+  var f = feedOutput.format(_f)
+  var e = eOutput.format(_e)
+  var start = getCurrentPosition()
+  var i = iOutput.format(_cx - start.x, 0)
+  var j = jOutput.format(_cy - start.y, 0)
+
+  switch (getCircularPlane()) {
+    case PLANE_XY:
+      writeBlock(gMotionModal.format(_clockwise ? 2 : 3), x, y, i, j, f, e)
+      break
+    default:
+      linearize(tolerance)
   }
 }
 
@@ -373,6 +545,8 @@ function onLayer (num) {
     layerAllHeight = layerTwoHeight - layerOneHeight
   }
 
+  executeTempTowerFeatures(num)
+
   writeComment(
     'Layer : ' +
       integerFormat.format(num) +
@@ -382,6 +556,9 @@ function onLayer (num) {
 }
 
 function onExtruderTemp (temp, wait, id) {
+  if (getProperty('_trigger') != 'disabled' && getCurrentPosition().z == 0) {
+    temp = getProperty('tempStart') // override temperature with the starting temperature for the temp tower feature
+  }
   if (id < numberOfExtruders) {
     if (id == 0) {
       id = properties.toolOverride
@@ -423,6 +600,42 @@ function onFanSpeed (speed, id) {
   }
 }
 
+var nextTriggerValue
+var newTemperature
+var maximumExtruderTemp = 260
+function executeTempTowerFeatures (num) {
+  if (getProperty('_trigger') != 'disabled') {
+    var multiplier = getProperty('_trigger') == 'height' ? 100 : 1
+    var currentValue =
+      getProperty('_trigger') == 'height'
+        ? xyzFormat.format(getCurrentPosition().z * 100)
+        : num - 1
+    if (num == 1) {
+      // initialize
+      nextTriggerValue = getProperty('_triggerValue') * multiplier
+      newTemperature = getProperty('tempStart')
+    } else {
+      if (currentValue >= nextTriggerValue) {
+        newTemperature += getProperty('tempInterval')
+        nextTriggerValue += getProperty('_triggerValue') * multiplier
+        if (newTemperature <= maximumExtruderTemp) {
+          onExtruderTemp(newTemperature, false, activeExtruder)
+        } else {
+          error(
+            subst(
+              localize(
+                "Requested extruder temperature of '%1' exceeds the maximum value of '%2'."
+              ),
+              newTemperature,
+              maximumExtruderTemp
+            )
+          )
+        }
+      }
+    }
+  }
+}
+
 function onParameter (name, value) {
   switch (name) {
     // Feedrate is set before rapid moves and extruder change
@@ -439,23 +652,5 @@ function onParameter (name, value) {
       }
       break
     // Warning or error message on unhandled parameter?
-  }
-}
-
-// User defined functions
-function setFeedRate (value) {
-  feedOutput.reset()
-  writeBlock(gFormat.format(1), feedOutput.format(value))
-}
-
-// Write comments
-function writeComment (text) {
-  writeln('; ' + text)
-}
-
-// Write G-code pass through custom commands
-function writeCustomCommand (text) {
-  if (text.length > 0) {
-    writeln(text)
   }
 }
