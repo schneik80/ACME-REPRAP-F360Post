@@ -121,7 +121,7 @@ var printerLimits = {
 }
 
 // User-defined property definitions
-propertyDefinitions = {
+/* propertyDefinitions = {
   standbyTemp: {
     title: 'Standby Temp',
     description: 'Specifies the standby temperature for extruders',
@@ -132,7 +132,7 @@ propertyDefinitions = {
     description: 'Override the primary tool with a specific ( Set tool 0 - 3)',
     type: 'number'
   }
-}
+} */
 
 // Workaround properties
 var extruderOffsets = [
@@ -340,6 +340,10 @@ function onOpen () {
   }
   writeComment('Max temp: ' + integerFormat.format(getExtruder(1).temperature))
   writeComment('Bed temp: ' + integerFormat.format(bedTemp))
+  writeComment('Temp Tower mode: ' + properties._trigger)
+  writeComment('Tower Z height or Layer value: ' + properties._triggerValue)
+  writeComment('Tower start temp: ' + properties.tempStart)
+  writeComment('Tower increment: ' + properties.tempInterval)
   writeComment('Standby temp; ' + properties.standbyTemp)
   writeComment('Print volume X: ' + dimensionFormat.format(printerLimits.x.max))
   writeComment('Print volume Y: ' + dimensionFormat.format(printerLimits.y.max))
