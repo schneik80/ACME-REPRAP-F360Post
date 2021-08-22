@@ -35,8 +35,21 @@ allowedCircularPlanes = 1 << PLANE_XY // allow XY circular motion
 
 // User-defined properties
 properties = {
-  standbyTemp: 0,
-  toolOverride: 0,
+  // REPRAP firmware workaround features
+  standbyTemp: {
+    title: 'Standby Temp',
+    description: 'Specifies the standby temperature for extruders',
+    type: 'number',
+    value: 100,
+    group: 'reprapSettings'
+  },
+  toolOverride: {
+    title: 'Tool 0 Override',
+    description: 'Override the primary tool with a specific ( Set tool 0 - 3)',
+    type: 'number',
+    value: 0,
+    group: 'reprapSettings'
+  },
 
   // temperature tower features
   _trigger: {
@@ -84,6 +97,12 @@ properties = {
 
 // Post property group
 groupDefinitions = {
+  reprapSettings: {
+    title: 'REPRAP Settings',
+    description: 'Settings to specific functions for REPRAP firmware printers',
+    collapsed: false,
+    order: 0
+  },
   temperatureTower: {
     title: 'Temperature Tower',
     description:
@@ -205,6 +224,13 @@ function writeComment (text) {
 function setFeedRate (value) {
   feedOutput.reset()
   writeBlock(gFormat.format(1), feedOutput.format(value))
+}
+
+function forceXYZE () {
+  xOutput.reset()
+  yOutput.reset()
+  zOutput.reset()
+  eOutput.reset()
 }
 
 // Write G-code pass through custom commands
