@@ -35,7 +35,7 @@ allowedCircularPlanes = 1 << PLANE_XY // allow XY circular motion
 
 // User-defined properties
 properties = {
-  stanbyTemp: 0,
+  standbyTemp: 0,
   toolOverride: 0,
 
   // temperature tower features
@@ -103,14 +103,14 @@ var printerLimits = {
 
 // User-defined property definitions
 propertyDefinitions = {
-  stanbyTemp: {
+  standbyTemp: {
     title: 'Standby Temp',
     description: 'Specifies the standby temperature for extruders',
     type: 'number'
   },
   toolOverride: {
     title: 'Tool 0 Override',
-    description: 'Override the priamry tool with a specific ( Set tool 0 - 3)',
+    description: 'Override the primary tool with a specific ( Set tool 0 - 3)',
     type: 'number'
   }
 }
@@ -122,7 +122,7 @@ var extruderOffsets = [
 ]
 var activeExtruder = 0 // Track the active extruder
 
-var totalFilament = 0 // Track the total fillament
+var totalFilament = 0 // Track the total filament
 
 var zHolder = 0
 var layerOneHeight = 0
@@ -314,7 +314,7 @@ function onOpen () {
   }
   writeComment('Max temp: ' + integerFormat.format(getExtruder(1).temperature))
   writeComment('Bed temp: ' + integerFormat.format(bedTemp))
-  writeComment('Standby temp; ' + properties.stanbyTemp)
+  writeComment('Standby temp; ' + properties.standbyTemp)
   writeComment('Print volume X: ' + dimensionFormat.format(printerLimits.x.max))
   writeComment('Print volume Y: ' + dimensionFormat.format(printerLimits.y.max))
   writeComment('Print volume Z: ' + dimensionFormat.format(printerLimits.z.max))
@@ -567,7 +567,7 @@ function onExtruderTemp (temp, wait, id) {
           gFormat.format(10),
           pFormat.format(id),
           sOutput.format(temp),
-          rOutput.format(properties.stanbyTemp)
+          rOutput.format(properties.standbyTemp)
         )
         writeBlock(tFormat.format(id) + ' ; Use Tool ' + id)
         writeBlock(gFormat.format(29) + ' S1')
@@ -577,7 +577,7 @@ function onExtruderTemp (temp, wait, id) {
           gFormat.format(10),
           pFormat.format(id),
           sOutput.format(temp),
-          rOutput.format(properties.stanbyTemp) + ' ; DELETE ME'
+          rOutput.format(properties.standbyTemp) + ' ; DELETE ME'
         )
       }
     } else {
@@ -644,11 +644,11 @@ function onParameter (name, value) {
       break
     case 'customCommand':
       if (value == 'start_gcode') {
-        // Anyhting you want to write before setting temps
+        // Anything you want to write before setting temps
         writeBlock(gFormat.format(28) + ' Z ; Probe Z')
       }
       if (value == 'end_gcode') {
-        // Anyhting you want to write before end gcodes
+        // Anything you want to write before end gcodes
       }
       break
     // Warning or error message on unhandled parameter?
