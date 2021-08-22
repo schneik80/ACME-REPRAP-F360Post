@@ -36,20 +36,6 @@ allowedCircularPlanes = 1 << PLANE_XY // allow XY circular motion
 // User-defined properties
 properties = {
   // REPRAP firmware workaround features
-  standbyTemp: {
-    title: 'Standby Temp',
-    description: 'Specifies the standby temperature for extruders',
-    type: 'number',
-    value: 100,
-    group: 'reprapSettings'
-  },
-  toolOverride: {
-    title: 'Tool 0 Override',
-    description: 'Override the primary tool with a specific ( Set tool 0 - 3)',
-    type: 'number',
-    value: 0,
-    group: 'reprapSettings'
-  },
 
   // temperature tower features
   _trigger: {
@@ -119,20 +105,6 @@ var printerLimits = {
   y: { min: 0, max: 300.0 }, //Defines the y bed size
   z: { min: 0, max: 300.0 } //Defines the z bed size
 }
-
-// User-defined property definitions
-/* propertyDefinitions = {
-  standbyTemp: {
-    title: 'Standby Temp',
-    description: 'Specifies the standby temperature for extruders',
-    type: 'number'
-  },
-  toolOverride: {
-    title: 'Tool 0 Override',
-    description: 'Override the primary tool with a specific ( Set tool 0 - 3)',
-    type: 'number'
-  }
-} */
 
 // Workaround properties
 var extruderOffsets = [
@@ -344,7 +316,6 @@ function onOpen () {
   writeComment('Tower Z height or Layer value: ' + properties._triggerValue)
   writeComment('Tower start temp: ' + properties.tempStart)
   writeComment('Tower increment: ' + properties.tempInterval)
-  writeComment('Standby temp; ' + properties.standbyTemp)
   writeComment('Print volume X: ' + dimensionFormat.format(printerLimits.x.max))
   writeComment('Print volume Y: ' + dimensionFormat.format(printerLimits.y.max))
   writeComment('Print volume Z: ' + dimensionFormat.format(printerLimits.z.max))
@@ -591,13 +562,12 @@ function onExtruderTemp (temp, wait, id) {
   }
   if (id < numberOfExtruders) {
     if (id == 0) {
-      id = properties.toolOverride
       if (wait) {
         writeBlock(
           gFormat.format(10),
           pFormat.format(id),
-          sOutput.format(temp),
-          rOutput.format(properties.standbyTemp)
+          sOutput.format(temp)
+          // rOutput.format(5)
         )
         writeBlock(tFormat.format(id) + ' ; Use Tool ' + id)
         writeBlock(gFormat.format(29) + ' S1')
@@ -606,8 +576,8 @@ function onExtruderTemp (temp, wait, id) {
         writeBlock(
           gFormat.format(10),
           pFormat.format(id),
-          sOutput.format(temp),
-          rOutput.format(properties.standbyTemp) + ' ; DELETE ME'
+          sOutput.format(temp)
+          // rOutput.format(5) + ' ; DELETE ME'
         )
       }
     } else {
