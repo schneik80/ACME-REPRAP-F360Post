@@ -36,7 +36,14 @@ allowedCircularPlanes = 1 << PLANE_XY // allow XY circular motion
 // User-defined properties
 properties = {
   // REPRAP firmware workaround features
-
+  sbyTemp: {
+    title: 'Standby Temp',
+    description: 'Specifies the standby temperature for extruders',
+    type: 'number',
+    value: 100,
+    group: 'Workarounds',
+    scope: 'post'
+  },
   // temperature tower features
   _trigger: {
     title: 'Trigger',
@@ -312,10 +319,12 @@ function onOpen () {
   }
   writeComment('Max temp: ' + integerFormat.format(getExtruder(1).temperature))
   writeComment('Bed temp: ' + integerFormat.format(bedTemp))
-  writeComment('Temp Tower mode: ' + properties._trigger)
-  writeComment('Tower Z height or Layer value: ' + properties._triggerValue)
-  writeComment('Tower start temp: ' + properties.tempStart)
-  writeComment('Tower increment: ' + properties.tempInterval)
+  writeComment('Temp Tower mode: ' + getProperty(properties._trigger))
+  writeComment(
+    'Tower Z height or Layer value: ' + getProperty(properties._triggerValue)
+  )
+  writeComment('Tower start temp: ' + getProperty(properties.tempStart))
+  writeComment('Tower increment: ' + getProperty(properties.tempInterval))
   writeComment('Print volume X: ' + dimensionFormat.format(printerLimits.x.max))
   writeComment('Print volume Y: ' + dimensionFormat.format(printerLimits.y.max))
   writeComment('Print volume Z: ' + dimensionFormat.format(printerLimits.z.max))
@@ -563,12 +572,7 @@ function onExtruderTemp (temp, wait, id) {
   if (id < numberOfExtruders) {
     if (id == 0) {
       if (wait) {
-        writeBlock(
-          gFormat.format(10),
-          pFormat.format(id),
-          sOutput.format(temp)
-          // rOutput.format(5)
-        )
+        writeBlock(gFormat.format(10), pFormat.format(id), sOutput.format(temp))
         writeBlock(tFormat.format(id) + ' ; Use Tool ' + id)
         writeBlock(gFormat.format(29) + ' S1')
         writeBlock(mFormat.format(116))
@@ -576,8 +580,8 @@ function onExtruderTemp (temp, wait, id) {
         writeBlock(
           gFormat.format(10),
           pFormat.format(id),
-          sOutput.format(temp)
-          // rOutput.format(5) + ' ; DELETE ME'
+          sOutput.format(temp),
+          rOutput.format(getProperty(properties.sbyTemp)) + ' ; DELETE ME'
         )
       }
     } else {
