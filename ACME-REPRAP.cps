@@ -44,6 +44,15 @@ properties = {
     group: 'Workarounds',
     scope: 'post'
   },
+  toolOverride: {
+    title: 'Tool 0 Override',
+    description: 'Override the primary tool with a specific ( Set tool 0 - 3)',
+    type: 'integer',
+    value: 0,
+    group: 'Workarounds',
+    scope: 'post'
+  },
+
   // temperature tower features
   _trigger: {
     title: 'Trigger',
@@ -91,7 +100,7 @@ properties = {
 // Post property group
 groupDefinitions = {
   reprapSettings: {
-    title: 'REPRAP Settings',
+    title: 'Workarounds',
     description: 'Settings to specific functions for REPRAP firmware printers',
     collapsed: false,
     order: 0
@@ -102,7 +111,7 @@ groupDefinitions = {
       'Temperature Towers are used to test new filaments in order to identify the best printing temperature. ' +
       'When utilized, this functionality generates a Gcode file where the temperature increases by a set amount, every step in height or layer number.',
     collapsed: true,
-    order: 0
+    order: 1
   }
 }
 
@@ -571,6 +580,7 @@ function onExtruderTemp (temp, wait, id) {
   }
   if (id < numberOfExtruders) {
     if (id == 0) {
+      id = getProperty(properties.toolOverride)
       if (wait) {
         writeBlock(gFormat.format(10), pFormat.format(id), sOutput.format(temp))
         writeBlock(tFormat.format(id) + ' ; Use Tool ' + id)
